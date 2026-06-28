@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Colorful Calculator</title>
+  <style>
+    /* ===== RESET ===== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ===== PAGE ===== */
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #f5f0ff, #e8f4ff);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    /* ===== CALCULATOR SHELL ===== */
+    .calc {
+      width: 320px;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+      border: 1.5px solid #ddd;
+      background: #f0eef8;
+    }
+
+    /* ===== DISPLAY ===== */
+    .display {
+      padding: 24px 20px 16px;
+      background: #1a1a2e;
+      text-align: right;
+    }
+
+    .expr {
+      font-size: 13px;
+      color: #888;
+      min-height: 18px;
+      margin-bottom: 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .result {
+      font-size: 42px;
+      font-weight: 500;
+      color: #ffffff;
+      line-height: 1.1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ===== BUTTON GRID ===== */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr); /* CSS Grid — 4 equal columns */
+      gap: 1px;
+      background: #ccc;
+    }
+
+    /* ===== BASE BUTTON ===== */
+    .btn {
+      border: none;
+      cursor: pointer;
+      font-size: 20px;
+      font-weight: 500;
+      height: 74px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: filter 0.1s, transform 0.08s;
+    }
+
+    .btn:active {
+      transform: scale(0.92);
+      filter: brightness(0.85);
+    }
+
+    /* ===== BUTTON COLOR THEMES ===== */
+    /* Gray — utility buttons (AC, +/-, %) */
+    .btn-gray {
+      background: #e8e6f0;
+      color: #3C3489;
+    }
+
+    /* Orange — operator buttons */
+    .btn-orange {
+      background: #F0997B;
+      color: #4A1B0C;
+    }
+
+    /* Blue — numbers 7, 8, 9 */
+    .btn-blue {
+      background: #85B7EB;
+      color: #042C53;
+    }
+
+    /* Green — numbers 4, 5, 6 */
+    .btn-green {
+      background: #5DCAA5;
+      color: #04342C;
+    }
+
+    /* Pink — numbers 1, 2, 3 */
+    .btn-pink {
+      background: #ED93B1;
+      color: #4B1528;
+    }
+
+    /* Dark purple — 0 and decimal */
+    .btn-dark {
+      background: #3C3489;
+      color: #EEEDFE;
+    }
+
+    /* Zero button spans 2 columns */
+    .btn-zero {
+      grid-column: span 2;
+      justify-content: flex-start;
+      padding-left: 28px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="calc">
+
+    <!-- DISPLAY SCREEN -->
+    <div class="display">
+      <div class="expr" id="expr"></div>
+      <div class="result" id="result">0</div>
+    </div>
+
+    <!-- BUTTON GRID -->
+    <div class="grid">
+
+      <!-- Row 1: Utility + Divide -->
+      <button class="btn btn-gray" onclick="calcAction('AC')">AC</button>
+      <button class="btn btn-gray" onclick="calcAction('+/-')">+/−</button>
+      <button class="btn btn-gray" onclick="calcAction('%')">%</button>
+      <button class="btn btn-orange" onclick="calcAction('÷')">÷</button>
+
+      <!-- Row 2: 7, 8, 9, Multiply -->
+      <button class="btn btn-blue" onclick="calcAction('7')">7</button>
+      <button class="btn btn-blue" onclick="calcAction('8')">8</button>
+      <button class="btn btn-blue" onclick="calcAction('9')">9</button>
+      <button class="btn btn-orange" onclick="calcAction('×')">×</button>
+
+      <!-- Row 3: 4, 5, 6, Subtract -->
+      <button class="btn btn-green" onclick="calcAction('4')">4</button>
+      <button class="btn btn-green" onclick="calcAction('5')">5</button>
+      <button class="btn btn-green" onclick="calcAction('6')">6</button>
+      <button class="btn btn-orange" onclick="calcAction('−')">−</button>
+
+      <!-- Row 4: 1, 2, 3, Add -->
+      <button class="btn btn-pink" onclick="calcAction('1')">1</button>
+      <button class="btn btn-pink" onclick="calcAction('2')">2</button>
+      <button class="btn btn-pink" onclick="calcAction('3')">3</button>
+      <button class="btn btn-orange" onclick="calcAction('+')">+</button>
+
+      <!-- Row 5: 0, Decimal, Equals -->
+      <button class="btn btn-dark btn-zero" onclick="calcAction('0')">0</button>
+      <button class="btn btn-dark" onclick="calcAction('.')">.</button>
+      <button class="btn btn-orange" onclick="calcAction('=')">=</button>
+
+    </div>
+  </div>
+
+  <!-- ===== JAVASCRIPT ===== -->
+  <script>
+    // State variables
+    let current = '0';   // number currently being typed
+    let prev = '';        // previous number (before operator)
+    let op = '';          // current operator
+    let justCalc = false; // true right after pressing =
+    let newNum = false;   // true after operator — next digit starts fresh
+
+    const resEl  = document.getElementById('result');
+    const exprEl = document.getElementById('expr');
+
+    // Main action handler — called by every button
+    function calcAction(v) {
+      const operators = ['÷', '×', '−', '+'];
+
+      // --- CLEAR ---
+      if (v === 'AC') {
+        current = '0'; prev = ''; op = ''; justCalc = false;
+        exprEl.textContent = '';
+        resEl.textContent  = '0';
+        return;
+      }
+
+      // --- TOGGLE SIGN ---
+      if (v === '+/-') {
+        current = String(parseFloat(current) * -1);
+        resEl.textContent = current;
+        return;
+      }
+
+      // --- PERCENTAGE ---
+      if (v === '%') {
+        current = String(parseFloat(current) / 100);
+        resEl.textContent = current;
+        return;
+      }
+
+      // --- OPERATOR PRESSED ---
+      if (operators.includes(v)) {
+        if (prev && op && !justCalc) compute(); // chain operations
+        prev = current;
+        op   = v;
+        justCalc = false;
+        newNum = true; // next digit must start fresh
+        exprEl.textContent = prev + ' ' + op;
+        return;
+      }
+
+      // --- EQUALS ---
+      if (v === '=') {
+        if (!prev || !op) return;
+        exprEl.textContent = prev + ' ' + op + ' ' + current + ' =';
+        compute();
+        justCalc = true;
+        return;
+      }
+
+      // --- DECIMAL POINT ---
+      if (v === '.') {
+        if (justCalc) { current = '0'; justCalc = false; }
+        if (current.includes('.')) return; // only one decimal allowed
+        current += '.';
+        resEl.textContent = current;
+        return;
+      }
+
+      // --- NUMBER DIGIT ---
+      if (justCalc || newNum) { current = v; justCalc = false; newNum = false; }
+      else current = (current === '0') ? v : current + v;
+      resEl.textContent = current;
+      // update expression line live while typing second number
+      if (prev && op) exprEl.textContent = prev + ' ' + op + ' ' + current;
+    }
+
+    // Perform the stored calculation
+    function compute() {
+      let a = parseFloat(prev);
+      let b = parseFloat(current);
+      let r;
+
+      // if-else to pick the right operation
+      if      (op === '÷') r = (b === 0) ? 'Error' : a / b;
+      else if (op === '×') r = a * b;
+      else if (op === '−') r = a - b;
+      else if (op === '+') r = a + b;
+
+      // Round floating-point artifacts (e.g. 0.1+0.2)
+      let display = (typeof r === 'string')
+        ? r
+        : parseFloat(r.toFixed(10)).toString();
+
+      current = display;
+      prev    = '';
+      op      = '';
+      resEl.textContent = display;
+    }
+
+    // ===== KEYBOARD SUPPORT =====
+    document.addEventListener('keydown', function(e) {
+      const map = {
+        '0':'0','1':'1','2':'2','3':'3','4':'4',
+        '5':'5','6':'6','7':'7','8':'8','9':'9',
+        '+':'+', '-':'−', '*':'×', '/':'÷',
+        'Enter':'=', '=':'=', 'Backspace':'AC', '.':'.'
+      };
+      if (map[e.key]) calcAction(map[e.key]);
+    });
+  </script>
+
+</body>
+</html>
